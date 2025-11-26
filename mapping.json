@@ -1,0 +1,10 @@
+{
+  "tilda_form_1": {
+    "tilda_field_1": "B24_FIELD_1",
+    "tilda_field_2": "UF_CUSTOM_123"
+  },
+  "tilda_form_2": {
+    "another_field": "TITLE",
+    "company_name": "UF_COMPANY_TITLE"
+  }
+}

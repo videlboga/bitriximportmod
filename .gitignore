@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+cloudflared
+cloudflared.log
+localhostrun.log
+lt.log
+serveo.log
+uvicorn.log
+/tmp/
+*.env
