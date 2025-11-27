@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shutil
 import tempfile
 import uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -15,6 +16,8 @@ import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from starlette.datastructures import FormData, UploadFile
+
+from PIL import Image
 
 from .bitrix import BitrixError, bitrix_client
 from .config import settings
@@ -32,6 +35,7 @@ class SavedUpload:
     filename: str
     path: Path
     content_type: Optional[str]
+    compressed: bool = False
 
 
 @dataclass
@@ -79,6 +83,12 @@ DEFAULT_FILE_FIELD_MAP = {
     "Показ": settings.bitrix_show_file_field,
     "Маркет": settings.bitrix_market_file_field,
 }
+COMPRESSION_FIELDS = {"illustrations_show", "illustrations_market"}
+FILE_TARGET_FIELDS = {
+    "illustrations_show": settings.bitrix_show_file_field,
+    "illustrations_market": settings.bitrix_market_file_field,
+    "linesheet": settings.bitrix_linesheet_file_field,
+}
 FORM_KEY_ALIASES = {
     "tilda_form_1": "tilda_form_main",
     "tilda_form_2": "tilda_form_secondary",
@@ -88,6 +98,23 @@ FORM_KEY_ALIASES = {
 def create_temp_directory() -> Path:
     settings.upload_temp_dir.mkdir(parents=True, exist_ok=True)
     return Path(tempfile.mkdtemp(prefix="tilda_", dir=settings.upload_temp_dir))
+
+
+def compress_image_inplace(path: Path) -> bool:
+    try:
+        image = Image.open(path)
+    except Exception:
+        return False
+    try:
+        image = image.convert("RGB")
+        temp_path = path.with_suffix(".tmp.jpg")
+        image.save(temp_path, format="JPEG", optimize=True, quality=85)
+        image.close()
+        original_name = path.name
+        os.replace(temp_path, path)
+        return True
+    except Exception:
+        return False
 
 
 async def persist_upload(field: str, upload: UploadFile, destination: Path) -> SavedUpload:
@@ -101,7 +128,10 @@ async def persist_upload(field: str, upload: UploadFile, destination: Path) -> S
                 break
             handle.write(chunk)
     await upload.close()
-    return SavedUpload(field=field, filename=safe_name, path=target, content_type=upload.content_type)
+    compressed = False
+    if field in COMPRESSION_FIELDS:
+        compressed = compress_image_inplace(target)
+    return SavedUpload(field=field, filename=safe_name, path=target, content_type=upload.content_type, compressed=compressed)
 
 
 async def parse_form_data(form: FormData, temp_dir: Path) -> tuple[Dict[str, Any], List[SavedUpload]]:
@@ -203,6 +233,10 @@ def build_search_values(mapping: FormMapping, payload: Dict[str, Any]) -> Search
     phones = [normalize_phone(item) for item in extract_list(payload, mapping.search.phone_keys)]
     emails = extract_list(payload, mapping.search.email_keys)
     return SearchValues(inn=inn, company=company, phones=phones, emails=emails)
+
+
+def get_uploads_for_field(uploads: List[SavedUpload], field_name: str) -> List[SavedUpload]:
+    return [upload for upload in uploads if upload.field == field_name]
 
 
 async def find_existing_contact(search: SearchValues) -> Optional[Dict[str, Any]]:
@@ -383,8 +417,26 @@ async def handle_primary_form(
             deal_fields["CONTACT_ID"] = contact_id
         deal_id = await bitrix_client.create_deal(deal_fields)
         created_deals.append(deal_id)
+        file_summary: Dict[str, List[str]] = {}
         target_field = file_fields.get(entry)
-        uploaded_ids = await upload_files_for_deal(deal_id, uploads, target_field)
+        if entry == "Показ" and target_field:
+            show_uploads = get_uploads_for_field(uploads, "illustrations_show")
+            ids = await upload_files_for_deal(deal_id, show_uploads, target_field)
+            if ids:
+                file_summary["illustrations_show"] = ids
+        if entry in ("Маркет", "Шоурум"):
+            market_field = file_fields.get("Маркет")
+            market_uploads = get_uploads_for_field(uploads, "illustrations_market")
+            ids = await upload_files_for_deal(deal_id, market_uploads, market_field)
+            if ids:
+                file_summary["illustrations_market"] = ids
+        linesheet_field = mapping.file_field_map.get("linesheet") if mapping.file_field_map else None
+        if not linesheet_field:
+            linesheet_field = settings.bitrix_linesheet_file_field
+        linesheet_uploads = get_uploads_for_field(uploads, "linesheet")
+        linesheet_ids = await upload_files_for_deal(deal_id, linesheet_uploads, linesheet_field)
+        if linesheet_ids:
+            file_summary["linesheet"] = linesheet_ids
         write_log_entry(
             source=form_key,
             payload_raw=payload,
@@ -393,7 +445,7 @@ async def handle_primary_form(
             extra={
                 "action": "deal_created",
                 "participation": entry,
-                "files": uploaded_ids,
+                "files": file_summary,
             },
         )
 

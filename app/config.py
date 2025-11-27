@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     bitrix_stage_secondary_new: str = "C12:NEW"
     bitrix_show_file_field: str = "UF_CRM_1764235976815"
     bitrix_market_file_field: str = "UF_CRM_1764236005770"
+    bitrix_linesheet_file_field: str = "UF_CRM_LINESHEET"
     bitrix_inn_field: str = "UF_INN"
     bitrix_title_field: str = "TITLE"
     bitrix_disk_user_id: int = 1
