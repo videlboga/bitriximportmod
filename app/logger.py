@@ -19,6 +19,7 @@ def write_log_entry(
     payload_raw: Dict[str, Any],
     mapped_fields: Optional[Dict[str, Any]] = None,
     deal_id: Optional[int] = None,
+    extra: Optional[Dict[str, Any]] = None,
 ) -> None:
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -29,6 +30,8 @@ def write_log_entry(
         entry["mapped_fields"] = mapped_fields
     if deal_id is not None:
         entry["deal_id"] = deal_id
+    if extra:
+        entry.update(extra)
 
     log_path = settings.log_file
     _ensure_parent(log_path)

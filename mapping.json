@@ -1,10 +1,42 @@
 {
-  "tilda_form_1": {
-    "tilda_field_1": "B24_FIELD_1",
-    "tilda_field_2": "UF_CUSTOM_123"
+  "tilda_form_main": {
+    "kind": "primary",
+    "participation_field": "format",
+    "deal_fields": {
+      "brands_name": "TITLE",
+      "INN": "UF_INN",
+      "info_about_brand": "UF_CRM_CUSTOM_ABOUT",
+      "Designer_email": "UF_CRM_DESIGNER_EMAIL"
+    },
+    "contact_fields": {
+      "Contact_person": "NAME",
+      "Contact_cell": "PHONE",
+      "email": "EMAIL"
+    },
+    "file_fields": {
+      "Показ": "UF_CRM_1764235976815",
+      "Маркет": "UF_CRM_1764236005770"
+    },
+    "search": {
+      "inn": ["INN"],
+      "company": ["brands_name", "jur_lico"],
+      "phone": ["Contact_cell"],
+      "email": ["email"]
+    }
   },
-  "tilda_form_2": {
-    "another_field": "TITLE",
-    "company_name": "UF_COMPANY_TITLE"
+  "tilda_form_secondary": {
+    "kind": "secondary",
+    "deal_fields": {
+      "brands_name": "TITLE",
+      "city": "UF_CRM_CITY"
+    },
+    "contact_fields": {
+      "Contact_person": "NAME",
+      "email": "EMAIL"
+    },
+    "search": {
+      "company": ["brands_name"],
+      "email": ["email"]
+    }
   }
 }

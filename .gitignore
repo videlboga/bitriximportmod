@@ -7,5 +7,6 @@ localhostrun.log
 lt.log
 serveo.log
 uvicorn.log
+/data/tmp_uploads/
 /tmp/
 *.env
