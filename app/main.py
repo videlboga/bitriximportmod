@@ -633,6 +633,11 @@ async def process_tilda_request(request: Request, forced_form_key: Optional[str]
             )
             return JSONResponse({"status": "ok", "note": f"Mapping for form '{form_key}' is not configured"})
 
+        write_log_entry(
+            source=form_key,
+            payload_raw=payload,
+            extra={"action": "payload_received", "raw_body_path": raw_body_path},
+        )
         if mapping.kind == "secondary":
             result = await handle_secondary_form(form_key, mapping, payload, raw_body_path=raw_body_path)
         else:
