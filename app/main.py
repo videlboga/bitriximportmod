@@ -79,6 +79,10 @@ DEFAULT_FILE_FIELD_MAP = {
     "Показ": settings.bitrix_show_file_field,
     "Маркет": settings.bitrix_market_file_field,
 }
+FORM_KEY_ALIASES = {
+    "tilda_form_1": "tilda_form_main",
+    "tilda_form_2": "tilda_form_secondary",
+}
 
 
 def create_temp_directory() -> Path:
@@ -119,13 +123,17 @@ async def parse_form_data(form: FormData, temp_dir: Path) -> tuple[Dict[str, Any
     return payload, uploads
 
 
+def normalize_form_key(name: str) -> str:
+    return FORM_KEY_ALIASES.get(name, name)
+
+
 def detect_form_key(payload: Dict[str, Any], forced: Optional[str] = None) -> str:
     if forced:
-        return forced
+        return normalize_form_key(forced)
     for key in FORM_IDENTIFIER_KEYS:
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
-            return value.strip()
+            return normalize_form_key(value.strip())
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot determine Tilda form identifier")
 
 
