@@ -215,6 +215,21 @@ async def download_remote_files(payload: Dict[str, Any], temp_dir: Path) -> List
     return tasks
 
 
+def save_raw_body(raw_body: Optional[bytes]) -> Optional[str]:
+    if not raw_body:
+        return None
+    raw_dir = settings.upload_temp_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"raw_{uuid.uuid4().hex}.bin"
+    path = raw_dir / filename
+    try:
+        with path.open("wb") as handle:
+            handle.write(raw_body)
+        return str(path)
+    except Exception:  # pragma: no cover - best effort
+        return None
+
+
 def normalize_form_key(name: str) -> str:
     return FORM_KEY_ALIASES.get(name, name)
 
@@ -488,6 +503,8 @@ async def handle_primary_form(
     mapping: FormMapping,
     payload: Dict[str, Any],
     uploads: List[SavedUpload],
+    *,
+    raw_body_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     search_values = build_search_values(mapping, payload)
     base_deal = await find_base_deal(search_values)
@@ -496,8 +513,9 @@ async def handle_primary_form(
         write_log_entry(
             source=form_key,
             payload_raw=payload,
-            mapped_fields={"base_deal": int(base_deal["ID"])},
-            extra={"action": "base_deal_updated"},
+            mapped_fields={"base_deal": int(base_deal["ID"])}
+            ,
+            extra={"action": "base_deal_updated", "raw_body_path": raw_body_path},
         )
     participation = extract_participation_types(mapping, payload)
     if not participation:
@@ -552,6 +570,7 @@ async def handle_primary_form(
                 "action": "deal_created",
                 "participation": entry,
                 "files": file_summary,
+                "raw_body_path": raw_body_path,
             },
         )
 
@@ -562,6 +581,8 @@ async def handle_secondary_form(
     form_key: str,
     mapping: FormMapping,
     payload: Dict[str, Any],
+    *,
+    raw_body_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     search_values = build_search_values(mapping, payload)
     contact_id, company_id = await ensure_contact(mapping, payload, search_values)
@@ -583,31 +604,47 @@ async def handle_secondary_form(
         payload_raw=payload,
         mapped_fields=deal_fields,
         deal_id=deal_id,
-        extra={"action": "secondary_deal_created"},
+        extra={"action": "secondary_deal_created", "raw_body_path": raw_body_path},
     )
     return {"status": "created", "deal_id": deal_id}
 
 
 async def process_tilda_request(request: Request, forced_form_key: Optional[str] = None) -> JSONResponse:
     temp_dir = create_temp_directory()
+    raw_body: bytes | None = None
+    try:
+        raw_body = await request.body()
+        request._body = raw_body  # type: ignore[attr-defined]
+    except Exception:  # pragma: no cover - best effort fallback
+        raw_body = None
     try:
         form = await request.form()
         payload, uploads = await parse_form_data(form, temp_dir)
         remote_uploads = await download_remote_files(payload, temp_dir)
         uploads.extend(remote_uploads)
         form_key = detect_form_key(payload, forced_form_key)
+        raw_body_path = save_raw_body(raw_body)
         mapping = mapping_store.get_form(form_key)
         if not mapping:
-            write_log_entry(source=form_key, payload_raw=payload, extra={"action": "mapping_not_found"})
+            write_log_entry(
+                source=form_key,
+                payload_raw=payload,
+                extra={"action": "mapping_not_found", "raw_body_path": raw_body_path},
+            )
             return JSONResponse({"status": "ok", "note": f"Mapping for form '{form_key}' is not configured"})
 
         if mapping.kind == "secondary":
-            result = await handle_secondary_form(form_key, mapping, payload)
+            result = await handle_secondary_form(form_key, mapping, payload, raw_body_path=raw_body_path)
         else:
-            result = await handle_primary_form(form_key, mapping, payload, uploads)
+            result = await handle_primary_form(form_key, mapping, payload, uploads, raw_body_path=raw_body_path)
         return JSONResponse(result)
     except BitrixError as exc:
-        write_log_entry(source=forced_form_key or "unknown", payload_raw={}, extra={"error": str(exc)})
+        raw_path_error = raw_body_path if 'raw_body_path' in locals() and raw_body_path else save_raw_body(raw_body)
+        write_log_entry(
+            source=forced_form_key or form_key if 'form_key' in locals() else "unknown",
+            payload_raw=payload if 'payload' in locals() else {},
+            extra={"error": str(exc), "raw_body_path": raw_path_error},
+        )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
