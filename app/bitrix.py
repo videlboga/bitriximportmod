@@ -111,6 +111,9 @@ class BitrixClient:
     async def ensure_uploads_parent(self) -> str:
         if self._uploads_parent_id:
             return self._uploads_parent_id
+        if settings.bitrix_disk_folder_id:
+            self._uploads_parent_id = str(settings.bitrix_disk_folder_id)
+            return self._uploads_parent_id
         root_id = await self.ensure_storage_root()
         folder_id = await self.ensure_folder(root_id, settings.bitrix_disk_root_folder_name)
         self._uploads_parent_id = folder_id
