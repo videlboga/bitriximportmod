@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     bitrix_linesheet_file_field: str = "UF_CRM_LINESHEET"
     bitrix_inn_field: str = "UF_INN"
     bitrix_title_field: str = "TITLE"
+    bitrix_company_fields: tuple[str, ...] = ("TITLE", "UF_CRM_FULL_LEGAL_NAME")
+    contact_company_fields: tuple[str, ...] = ("COMPANY_TITLE", "UF_CRM_FULL_LEGAL_NAME", "NAME")
     bitrix_disk_user_id: int = 1
     bitrix_disk_root_folder_name: str = "TildaUploads"
     bitrix_disk_use_common: bool = True
@@ -47,6 +49,18 @@ class Settings(BaseSettings):
         if isinstance(value, (list, tuple)):
             return tuple(str(item) for item in value)
         raise ValueError("Unsupported value for b24_forward_fields")
+
+    @field_validator("bitrix_company_fields", "contact_company_fields", mode="before")
+    @classmethod
+    def _split_company_fields(cls, value: object) -> tuple[str, ...]:
+        if value is None:
+            return ()
+        if isinstance(value, str):
+            items = [item.strip() for item in value.split(",") if item.strip()]
+            return tuple(items)
+        if isinstance(value, (list, tuple)):
+            return tuple(str(item) for item in value if str(item).strip())
+        raise ValueError("Unsupported value for company fields configuration")
 
 
 settings = Settings()

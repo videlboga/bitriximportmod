@@ -5,8 +5,36 @@
     "deal_fields": {
       "brands_name": "TITLE",
       "INN": "UF_INN",
-      "info_about_brand": "UF_CRM_CUSTOM_ABOUT",
-      "Designer_email": "UF_CRM_DESIGNER_EMAIL"
+      "info_about_brand": "UF_CRM_BRAND_ABOUT",
+      "Designer_email": "UF_CRM_DESIGNER_EMAIL",
+      "jur_lico": "UF_CRM_FULL_LEGAL_NAME",
+      "adress_registration": "UF_CRM_LEGAL_ADDRESS",
+      "year_of_foundation": "UF_CRM_YEAR_OF_FOUNDATION",
+      "city": "UF_CRM_CITY",
+      "show_type": "UF_CRM_SHOW_TYPE",
+      "type_of_sales": "UF_CRM_SALES_TYPE",
+      "stilist_napravlenie": "UF_CRM_STYLE_DIRECTIONS",
+      "segment": "UF_CRM_MARKET_SEGMENT",
+      "category_show": "UF_CRM_CATEGORY_SHOW",
+      "category_market": "UF_CRM_CATEGORY_MARKET",
+      "СМИ_о_бренде_1": "UF_CRM_MEDIA_LINKS",
+      "СМИ_о_бренде_2": "UF_CRM_MEDIA_LINKS",
+      "СМИ_о_бренде_3": "UF_CRM_MEDIA_LINKS",
+      "Graduation": "UF_CRM_GRADUATION_STATUS",
+      "Graduatuion_name": "UF_CRM_GRADUATION_DETAILS",
+      "About-MFW": "UF_CRM_ABOUT_MFW",
+      "cultural_code": "UF_CRM_CULTURAL_CODE",
+      "sustainable_fashion": "UF_CRM_SUSTAINABLE_PRACTICES",
+      "previous_experience": "UF_CRM_PREVIOUS_EXPERIENCE",
+      "website": "UF_CRM_WEBSITE",
+      "socials": "UF_CRM_SOCIALS",
+      "online_shopping": "UF_CRM_ONLINE_STORE",
+      "social_media_shopping": "UF_CRM_SOCIAL_SHOP",
+      "Designer": "UF_CRM_DESIGNER_NAME",
+      "Cell": "UF_CRM_DESIGNER_PHONE",
+      "proizvodstvo": "UF_CRM_PRODUCTION_TYPE",
+      "working_with_buyers": "UF_CRM_BUYERS_EXPERIENCE",
+      "confirm_B2B": "UF_CRM_CONFIRM_B2B"
     },
     "contact_fields": {
       "Contact_person": "NAME",
@@ -18,25 +46,68 @@
       "Маркет": "UF_CRM_1764236005770"
     },
     "search": {
-      "inn": ["INN"],
-      "company": ["brands_name", "jur_lico"],
-      "phone": ["Contact_cell"],
-      "email": ["email"]
+      "inn": [
+        "INN"
+      ],
+      "company": [
+        "brands_name",
+        "jur_lico"
+      ],
+      "phone": [
+        "Contact_cell"
+      ],
+      "email": [
+        "email"
+      ]
     }
   },
   "tilda_form_secondary": {
     "kind": "secondary",
     "deal_fields": {
       "brands_name": "TITLE",
-      "city": "UF_CRM_CITY"
+      "city": "UF_CRM_CITY",
+      "jur_lico": "UF_CRM_FULL_LEGAL_NAME",
+      "adress_registration": "UF_CRM_LEGAL_ADDRESS",
+      "year_of_foundation": "UF_CRM_YEAR_OF_FOUNDATION",
+      "show_type": "UF_CRM_SHOW_TYPE",
+      "type_of_sales": "UF_CRM_SALES_TYPE",
+      "segment": "UF_CRM_MARKET_SEGMENT",
+      "category1": "UF_CRM_CATEGORY_MARKET",
+      "info_about_brand": "UF_CRM_BRAND_ABOUT",
+      "website": "UF_CRM_WEBSITE",
+      "socials": "UF_CRM_SOCIALS",
+      "online_shopping": "UF_CRM_ONLINE_STORE",
+      "social_media_shopping": "UF_CRM_SOCIAL_SHOP",
+      "Designer_email": "UF_CRM_DESIGNER_EMAIL",
+      "Contact_person": "UF_CRM_DESIGNER_NAME",
+      "Contact_cell": "UF_CRM_DESIGNER_PHONE",
+      "format": "UF_CRM_SECONDARY_FORMAT",
+      "adres": "UF_CRM_SECONDARY_ADDRESS",
+      "data": "UF_CRM_SECONDARY_DATE",
+      "info_about_show": "UF_CRM_SECONDARY_INFO",
+      "exclusivity": "UF_CRM_SECONDARY_EXCLUSIVITY",
+      "stilist_napravlenie": "UF_CRM_STYLE_DIRECTIONS",
+      "СМИ_о_бренде_1": "UF_CRM_MEDIA_LINKS",
+      "СМИ_о_бренде_2": "UF_CRM_MEDIA_LINKS",
+      "СМИ_о_бренде_3": "UF_CRM_MEDIA_LINKS",
+      "Graduation": "UF_CRM_GRADUATION_STATUS",
+      "Graduatuion_name": "UF_CRM_GRADUATION_DETAILS",
+      "About-MFW": "UF_CRM_ABOUT_MFW",
+      "cultural_code": "UF_CRM_CULTURAL_CODE",
+      "sustainable_fashion": "UF_CRM_SUSTAINABLE_PRACTICES",
+      "previous_experience": "UF_CRM_PREVIOUS_EXPERIENCE"
     },
     "contact_fields": {
       "Contact_person": "NAME",
       "email": "EMAIL"
     },
     "search": {
-      "company": ["brands_name"],
-      "email": ["email"]
+      "company": [
+        "brands_name"
+      ],
+      "email": [
+        "email"
+      ]
     }
   }
 }

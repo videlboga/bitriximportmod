@@ -252,6 +252,23 @@ async def find_existing_contact(search: SearchValues) -> Optional[Dict[str, Any]
             contact = contacts[0]
             contact_detail = await bitrix_client.get_contact(int(contact["ID"]))
             return contact_detail
+    if search.company:
+        contact = await find_contact_by_company(search.company)
+        if contact:
+            return contact
+    return None
+
+
+async def find_contact_by_company(company: str) -> Optional[Dict[str, Any]]:
+    normalized = company.strip()
+    if not normalized:
+        return None
+    for field in settings.contact_company_fields or ():
+        contacts = await bitrix_client.list_contacts({field: normalized}, select=["ID", "COMPANY_ID"])
+        if contacts:
+            contact = contacts[0]
+            contact_detail = await bitrix_client.get_contact(int(contact["ID"]))
+            return contact_detail
     return None
 
 
@@ -310,11 +327,13 @@ async def find_base_deal(search: SearchValues) -> Optional[Dict[str, Any]]:
         if deals:
             return deals[0]
     if search.company:
-        company_filter = base_filter | {settings.bitrix_title_field: search.company}
-        deals = await bitrix_client.list_deals(company_filter, select=["ID", "COMPANY_ID", "CONTACT_ID"])
-        if deals:
-            return deals[0]
-    if search.phones or search.emails:
+        for field in settings.bitrix_company_fields or (settings.bitrix_title_field,):
+            company_filter = dict(base_filter)
+            company_filter[field] = search.company
+            deals = await bitrix_client.list_deals(company_filter, select=["ID", "COMPANY_ID", "CONTACT_ID"])
+            if deals:
+                return deals[0]
+    if search.phones or search.emails or search.company:
         contact = await find_existing_contact(search)
         if contact:
             contact_deals = await bitrix_client.list_deals(
@@ -323,6 +342,14 @@ async def find_base_deal(search: SearchValues) -> Optional[Dict[str, Any]]:
             )
             if contact_deals:
                 return contact_deals[0]
+            company_id = contact.get("COMPANY_ID")
+            if company_id:
+                company_deals = await bitrix_client.list_deals(
+                    {"CATEGORY_ID": settings.bitrix_category_base_id, "COMPANY_ID": company_id},
+                    select=["ID", "COMPANY_ID", "CONTACT_ID"],
+                )
+                if company_deals:
+                    return company_deals[0]
     return None
 
 
@@ -337,7 +364,20 @@ def build_deal_fields(
         value = normalize_value(form_payload.get(form_field))
         if value is None:
             continue
-        fields[bitrix_field] = value
+        existing = fields.get(bitrix_field)
+        if existing is None:
+            fields[bitrix_field] = value
+            continue
+        values: List[Any] = []
+        if isinstance(existing, list):
+            values.extend(existing)
+        else:
+            values.append(existing)
+        if isinstance(value, list):
+            values.extend(value)
+        else:
+            values.append(value)
+        fields[bitrix_field] = values
     return fields
 
 
