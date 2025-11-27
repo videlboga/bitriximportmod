@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import unquote, urlparse
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, status
@@ -89,6 +90,11 @@ FILE_TARGET_FIELDS = {
     "illustrations_market": settings.bitrix_market_file_field,
     "linesheet": settings.bitrix_linesheet_file_field,
 }
+REMOTE_FILE_FIELDS = set(FILE_TARGET_FIELDS.keys())
+PARTICIPATION_ALIASES = {
+    "маркет/шоурум": "Маркет / Шоурум",
+    "маркет / шоурум": "Маркет / Шоурум",
+}
 FORM_KEY_ALIASES = {
     "tilda_form_1": "tilda_form_main",
     "tilda_form_2": "tilda_form_secondary",
@@ -151,6 +157,62 @@ async def parse_form_data(form: FormData, temp_dir: Path) -> tuple[Dict[str, Any
         else:
             payload[key] = value
     return payload, uploads
+
+
+def extract_remote_urls(value: Any) -> List[str]:
+    urls: List[str] = []
+    if isinstance(value, list):
+        items = value
+    else:
+        items = [value]
+    for item in items:
+        if not item:
+            continue
+        if isinstance(item, list):
+            urls.extend(extract_remote_urls(item))
+            continue
+        text = str(item)
+        candidates = re.split(r"[\n,;]+", text)
+        for candidate in candidates:
+            candidate = candidate.strip()
+            if candidate.lower().startswith("http://") or candidate.lower().startswith("https://"):
+                urls.append(candidate)
+    return urls
+
+
+async def download_remote_files(payload: Dict[str, Any], temp_dir: Path) -> List[SavedUpload]:
+    tasks: List[SavedUpload] = []
+    fields_to_process = REMOTE_FILE_FIELDS & set(payload.keys())
+    if not fields_to_process:
+        return tasks
+    async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
+        for field in fields_to_process:
+            urls = extract_remote_urls(payload.get(field))
+            for url in urls:
+                try:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                except Exception as exc:  # pragma: no cover - network errors only logged
+                    logger.warning("Failed to download remote file %s: %s", url, exc)
+                    continue
+                filename = Path(unquote(urlparse(url).path)).name or f"remote_{uuid.uuid4().hex}"
+                safe_name = re.sub(r"[^\w.\-]+", "_", filename)
+                target = temp_dir / safe_name
+                with target.open("wb") as handle:
+                    handle.write(response.content)
+                compressed = False
+                if field in COMPRESSION_FIELDS:
+                    compressed = compress_image_inplace(target)
+                tasks.append(
+                    SavedUpload(
+                        field=field,
+                        filename=safe_name,
+                        path=target,
+                        content_type=response.headers.get("content-type"),
+                        compressed=compressed,
+                    )
+                )
+    return tasks
 
 
 def normalize_form_key(name: str) -> str:
@@ -391,7 +453,11 @@ def extract_participation_types(form_mapping: FormMapping, payload: Dict[str, An
     elif isinstance(raw_value, str):
         tokens = [raw_value]
     for token in tokens:
-        parts = re.split(r"[;,/]+", token)
+        alias_key = token.strip().lower()
+        if alias_key in PARTICIPATION_ALIASES:
+            values.append(PARTICIPATION_ALIASES[alias_key])
+            continue
+        parts = re.split(r"[;\n]+", token)
         for part in parts:
             cleaned = part.strip()
             if not cleaned:
@@ -527,6 +593,8 @@ async def process_tilda_request(request: Request, forced_form_key: Optional[str]
     try:
         form = await request.form()
         payload, uploads = await parse_form_data(form, temp_dir)
+        remote_uploads = await download_remote_files(payload, temp_dir)
+        uploads.extend(remote_uploads)
         form_key = detect_form_key(payload, forced_form_key)
         mapping = mapping_store.get_form(form_key)
         if not mapping:

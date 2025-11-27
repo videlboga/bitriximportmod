@@ -43,7 +43,8 @@
     },
     "file_fields": {
       "Показ": "UF_CRM_1764235976815",
-      "Маркет": "UF_CRM_1764236005770"
+      "Маркет": "UF_CRM_1764236005770",
+      "linesheet": "UF_CRM_LINESHEET"
     },
     "search": {
       "inn": [
