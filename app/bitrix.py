@@ -90,14 +90,22 @@ class BitrixClient:
     async def ensure_storage_root(self) -> str:
         if self._root_folder_id:
             return self._root_folder_id
-        data = await self._request(
-            "disk.storage.getforuser",
-            json={"id": settings.bitrix_disk_user_id},
-        )
+        if settings.bitrix_disk_use_common:
+            data = await self._request("disk.storage.getforcommon", json={})
+        else:
+            data = await self._request(
+                "disk.storage.getforuser",
+                json={"id": settings.bitrix_disk_user_id},
+            )
         storage = data.get("result")
         if not storage:
-            raise BitrixError("Unable to resolve Bitrix Disk storage for current user")
-        self._root_folder_id = str(storage["rootObjectId"])
+            raise BitrixError("Unable to resolve Bitrix Disk storage for configured scope")
+        root_object_id = storage.get("ROOT_OBJECT_ID") or storage.get("rootObjectId")
+        if not root_object_id and isinstance(storage.get("ROOT_OBJECT"), dict):
+            root_object_id = storage["ROOT_OBJECT"].get("ID")
+        if not root_object_id:
+            raise BitrixError("Unable to resolve Bitrix Disk root folder id from storage response")
+        self._root_folder_id = str(root_object_id)
         return self._root_folder_id
 
     async def ensure_uploads_parent(self) -> str:

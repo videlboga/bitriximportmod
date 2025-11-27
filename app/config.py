@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     bitrix_title_field: str = "TITLE"
     bitrix_disk_user_id: int = 1
     bitrix_disk_root_folder_name: str = "TildaUploads"
+    bitrix_disk_use_common: bool = True
     participation_keywords: tuple[str, ...] = ("Показ", "Маркет", "Шоурум")
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="BITRIX_TILDA_", env_file_encoding="utf-8")
